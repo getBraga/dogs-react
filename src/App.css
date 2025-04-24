@@ -2,6 +2,7 @@
   box-sizing: border-box;
 }
 body {
+  padding-top: 4rem;
   margin: 0px;
   color: #333;
   --type-fisrt: Helvetica, Arial, sans-serif;
@@ -32,6 +33,9 @@ input {
   font-size: 1rem;
   font-family: var(--type-fisrt);
   color: #333;
+}
+a {
+  text-decoration: none;
 }
 .container {
   max-width: 50rem;
