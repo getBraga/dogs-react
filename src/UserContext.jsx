@@ -1,6 +1,6 @@
 import React from "react";
-import { TOKEN_POST, USER_GET } from "./api";
-
+import { TOKEN_POST, TOKEN_VALIDATE_POST, USER_GET } from "./api";
+import { useNavigate } from "react-router-dom";
 export const UserContext = React.createContext();
 
 export const UserStorage = ({ children }) => {
@@ -8,6 +8,18 @@ export const UserStorage = ({ children }) => {
   const [login, setLogin] = React.useState(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState(false);
+  const navigate = useNavigate();
+
+  const userLogout = React.useCallback(async () => {
+    setData(null);
+    setError(null);
+    setLoading(false);
+    setLogin(false);
+    window.localStorage.removeItem("token");
+
+    navigate("/login");
+  }, [navigate]);
+
   async function getUser(token) {
     const { url, options } = USER_GET(token);
     const response = await fetch(url, options);
@@ -16,18 +28,56 @@ export const UserStorage = ({ children }) => {
     setLogin(true);
   }
   async function userLogin(username, password) {
-    const { url, options } = TOKEN_POST({ username, password });
-    const response = await fetch(url, options);
-    const { token } = await response.json();
+    try {
+      setError(null);
+      setLoading(true);
+      const { url, options } = TOKEN_POST({ username, password });
+      const response = await fetch(url, options);
 
-    // Esta e uma API de terceiros, com isso não deu para configurar o
-    // Cookies (HttpOnly + Secure) para tratar
-    // o token de forma segura.
-    window.localStorage.setItem("token", token);
-    getUser(token);
+      if (!response.ok) {
+        const { message } = await response.json();
+        throw new Error(`Error: ${message}`);
+      }
+
+      const { token } = await response.json();
+      // Esta e uma API de terceiros, com isso não deu para configurar o
+      // Cookies (HttpOnly + Secure) para tratar
+      // o token de forma segura.
+      window.localStorage.setItem("token", token);
+      getUser(token);
+      navigate("/conta");
+    } catch (error) {
+      setError(error.message);
+      setLogin(false);
+    } finally {
+      setLoading(false);
+    }
   }
+
+  React.useEffect(() => {
+    async function autoLogin() {
+      const token = window.localStorage.getItem("token");
+      if (token) {
+        try {
+          const { url, options } = TOKEN_VALIDATE_POST(token);
+          const response = await fetch(url, options);
+          if (!response.ok) throw new Error("Token inválido");
+
+          await getUser(token);
+        } catch (error) {
+          userLogout();
+        } finally {
+          setLoading(false);
+        }
+      }
+    }
+    autoLogin();
+  }, [userLogout]);
+
   return (
-    <UserContext.Provider value={{ userLogin, data }}>
+    <UserContext.Provider
+      value={{ userLogin, data, userLogout, error, loading, login }}
+    >
       {children}
     </UserContext.Provider>
   );
