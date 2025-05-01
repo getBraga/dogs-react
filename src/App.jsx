@@ -27,7 +27,7 @@ const App = () => {
               path="conta/*"
               element={
                 <ProtectedRoute>
-                  <Login />
+                  <User />
                 </ProtectedRoute>
               }
             />
